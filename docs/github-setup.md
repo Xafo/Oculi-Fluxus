@@ -2,7 +2,7 @@
 
 ## 1) Repository Secrets
 
-Configure these repository secrets if you want workflows to mint app tokens directly:
+Configure these repository secrets. They are required for autonomous PM -> Dev chaining:
 
 - `APP_ID`
 - `APP_PRIVATE_KEY`
