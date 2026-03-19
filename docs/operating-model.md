@@ -25,6 +25,7 @@ When QA fails:
 2. Post actionable failure summary on the PR.
 3. Return ownership to Developer Agent.
 4. Re-run gates after new commit.
+5. On QA pass, remove `qa-fail` and `rework` labels automatically.
 
 ## Minimal Human Input Policy
 
