@@ -1,0 +1,61 @@
+name: sr-gate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sr-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate PR metadata and risky markers
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BODY_FILE="/tmp/pr_body.txt"
+          printf "%s" "${{ github.event.pull_request.body }}" > "$BODY_FILE"
+
+          if ! grep -q "## Risks" "$BODY_FILE"; then
+            echo "missing_risks=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          if [[ -n "$CHANGED" ]]; then
+            for file in $CHANGED; do
+              if [[ -f "$file" ]] && grep -n -E "TODO|FIXME|HACK" "$file" >/dev/null; then
+                echo "risk_markers=true" >> "$GITHUB_OUTPUT"
+                break
+              fi
+            done
+          fi
+
+      - name: Fail on gate violations
+        if: steps.gate.outputs.missing_risks == 'true' || steps.gate.outputs.risk_markers == 'true'
+        shell: bash
+        run: |
+          echo "Sr gate failed due to missing PR sections or risky markers."
+          exit 1
+
+      - name: Comment gate success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: "Sr Developer Agent gate: PASS"
+            });

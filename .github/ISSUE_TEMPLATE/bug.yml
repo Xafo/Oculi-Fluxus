@@ -1,0 +1,41 @@
+name: Defect Report
+description: Report a QA finding for rework
+title: "bug: "
+labels: ["bug", "qa-fail", "rework"]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Source issue/PR
+      description: Link to original story or PR.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true

@@ -1,0 +1,38 @@
+name: labels-bootstrap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  create-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              { name: "backlog", color: "0052cc", description: "Pending PM analysis" },
+              { name: "pm-triage", color: "5319e7", description: "Needs PM structuring" },
+              { name: "pm-reviewed", color: "1d76db", description: "PM analysis done" },
+              { name: "ready-for-dev", color: "0e8a16", description: "Ready for development" },
+              { name: "in-review", color: "fbca04", description: "PR under technical review" },
+              { name: "qa-fail", color: "d93f0b", description: "QA gate failed" },
+              { name: "rework", color: "b60205", description: "Returned to development" },
+              { name: "done", color: "0e8a16", description: "Accepted and complete" }
+            ];
+
+            for (const label of labels) {
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ...label
+                });
+              } catch (error) {
+                if (error.status !== 422) throw error;
+              }
+            }

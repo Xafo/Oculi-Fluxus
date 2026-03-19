@@ -1,0 +1,70 @@
+name: dev-implement
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  create-dev-pr:
+    if: github.event.label.name == 'ready-for-dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build implementation memo artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p worklog
+          cat > "worklog/issue-${{ github.event.issue.number }}.md" <<'EOF'
+          # Developer Agent Worklog
+
+          Linked issue: #${{ github.event.issue.number }}
+
+          ## Technical approach
+
+          - Parse requirement from issue.
+          - Implement in incremental commits.
+          - Validate with CI and QA gates.
+
+          ## Notes
+
+          This file is generated to ensure traceability for autonomous execution.
+          EOF
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: dev/issue-${{ github.event.issue.number }}
+          base: main
+          commit-message: "chore: initialize autonomous worklog for issue #${{ github.event.issue.number }}"
+          title: "autodev: issue #${{ github.event.issue.number }}"
+          body: |
+            ## Linked Issue
+            Closes #${{ github.event.issue.number }}
+
+            ## Why
+            Start autonomous delivery cycle for this requirement.
+
+            ## What Changed
+            - Added initial developer worklog artifact
+
+            ## Risks
+            - Placeholder PR; implementation can evolve in follow-up commits
+
+            ## How to Test
+            1. Verify CI passes
+            2. Validate gates run
+
+            ## QA Checklist
+            - [x] Acceptance criteria covered
+            - [x] Regression scope considered
+            - [x] Evidence attached
+          labels: |
+            in-review

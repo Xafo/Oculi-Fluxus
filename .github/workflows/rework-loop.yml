@@ -1,0 +1,47 @@
+name: rework-loop
+
+on:
+  workflow_run:
+    workflows: ["qa-gate"]
+    types: [completed]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  rework:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add labels and rework comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`
+            });
+
+            if (!prs.data.length) {
+              core.info("No matching PR found for failed QA run.");
+              return;
+            }
+
+            const pr = prs.data[0];
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: ["qa-fail", "rework"]
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: "QA Agent gate failed. Returning to Developer Agent for rework."
+            });

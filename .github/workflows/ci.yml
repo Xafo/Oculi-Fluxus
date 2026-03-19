@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required governance files
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            "AGENTS.md"
+            "docs/operating-model.md"
+            ".github/pull_request_template.md"
+            ".github/workflows/sr-review.yml"
+            ".github/workflows/qa-gate.yml"
+          )
+          for file in "${required[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "Missing required file: $file"
+              exit 1
+            fi
+          done
+
+      - name: Validate docs are non-empty
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            "README.md"
+            "AGENTS.md"
+            "docs/operating-model.md"
+            "docs/agents/pm.md"
+            "docs/agents/developer.md"
+            "docs/agents/sr-developer.md"
+            "docs/agents/qa.md"
+          )
+          for file in "${files[@]}"; do
+            if [[ ! -s "$file" ]]; then
+              echo "Empty file: $file"
+              exit 1
+            fi
+          done

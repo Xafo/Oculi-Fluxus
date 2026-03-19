@@ -1,0 +1,4 @@
+* @OWNER
+
+docs/agents/* @OWNER
+.github/workflows/* @OWNER

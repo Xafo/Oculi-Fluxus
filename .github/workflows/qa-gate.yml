@@ -1,0 +1,52 @@
+name: qa-gate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  qa-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate PR testing content
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY_FILE="/tmp/pr_body.txt"
+          printf "%s" "${{ github.event.pull_request.body }}" > "$BODY_FILE"
+
+          if ! grep -q "## How to Test" "$BODY_FILE"; then
+            echo "missing_test_section=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          if ! grep -q "## QA Checklist" "$BODY_FILE"; then
+            echo "missing_qa_section=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fail on QA gate violations
+        if: steps.validate.outputs.missing_test_section == 'true' || steps.validate.outputs.missing_qa_section == 'true'
+        shell: bash
+        run: |
+          echo "QA gate failed: missing test instructions or QA checklist."
+          exit 1
+
+      - name: Comment QA pass
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: "QA Agent gate: PASS"
+            });

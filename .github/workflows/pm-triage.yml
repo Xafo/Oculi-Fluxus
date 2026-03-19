@@ -1,0 +1,45 @@
+name: pm-triage
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add PM structure comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              "PM Agent intake completed.",
+              "",
+              "Required refinement structure:",
+              "- Problem statement",
+              "- User story",
+              "- Acceptance criteria (Given/When/Then)",
+              "- Scope in/out",
+              "- Risks"
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Apply labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ["pm-reviewed", "ready-for-dev"]
+            });
