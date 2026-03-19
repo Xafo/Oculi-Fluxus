@@ -1,0 +1,124 @@
+name: post-merge
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  finalize:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Finalize PR and linked issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = context.payload.pull_request.number;
+            const prTitle = context.payload.pull_request.title;
+            const mergeSha = context.payload.pull_request.merge_commit_sha;
+            const prUrl = context.payload.pull_request.html_url;
+
+            async function ensureLabel(name, color, description) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch (error) {
+                if (error.status === 404) {
+                  await github.rest.issues.createLabel({
+                    owner,
+                    repo,
+                    name,
+                    color,
+                    description
+                  });
+                  return;
+                }
+                throw error;
+              }
+            }
+
+            async function safeRemoveLabel(issue_number, name) {
+              try {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number, name });
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+              }
+            }
+
+            await ensureLabel("done", "0e8a16", "Accepted and complete");
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: prNumber,
+              labels: ["done"]
+            });
+
+            for (const name of ["in-review", "qa-fail", "rework"]) {
+              await safeRemoveLabel(prNumber, name);
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body: `Post-merge automation completed. PR marked as done. Merge commit: ${mergeSha}`
+            });
+
+            const query = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 20) {
+                      nodes {
+                        number
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const result = await github.graphql(query, {
+              owner,
+              repo,
+              number: prNumber
+            });
+
+            const linkedIssues = result.repository.pullRequest.closingIssuesReferences.nodes;
+
+            for (const issue of linkedIssues) {
+              const issueNumber = issue.number;
+
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                labels: ["done"]
+              });
+
+              for (const name of ["backlog", "pm-triage", "pm-reviewed", "ready-for-dev"]) {
+                await safeRemoveLabel(issueNumber, name);
+              }
+
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: [
+                  "Release note:",
+                  `- Merged PR: ${prUrl}`,
+                  `- Title: ${prTitle}`,
+                  `- Merge commit: ${mergeSha}`
+                ].join("\n")
+              });
+            }

@@ -16,6 +16,7 @@
 - Sr gate passes.
 - QA gate passes.
 - No unresolved high-severity defects.
+- On merge to `main`, automation applies `done` labels and publishes release notes on linked issues.
 
 ## Rework Loop
 
