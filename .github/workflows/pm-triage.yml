@@ -11,9 +11,18 @@ jobs:
   refine:
     runs-on: ubuntu-latest
     steps:
+      - name: Create GitHub App token
+        id: app-token
+        if: ${{ secrets.APP_ID != '' && secrets.APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Add PM structure comment
         uses: actions/github-script@v7
         with:
+          github-token: ${{ steps.app-token.outputs.token || github.token }}
           script: |
             const body = [
               "PM Agent intake completed.",
@@ -36,6 +45,7 @@ jobs:
       - name: Apply labels
         uses: actions/github-script@v7
         with:
+          github-token: ${{ steps.app-token.outputs.token || github.token }}
           script: |
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
